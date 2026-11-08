@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="pt"> <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="no-referrer">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://www.gstatic.com https://cdnjs.cloudflare.com https://*.firebaseio.com 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.firebaseapp.com; frame-src https://*.firebaseio.com https://*.firebaseapp.com; base-uri 'self'; form-action 'self'; object-src 'none'">
+    <title>ANBU Farm Tower - Cadastro</title>
+    <link rel="stylesheet" href="css/style.css?v=20261106-usuarios">
+</head>
+<body>
+    
+    
+    <div class="modal-overlay" id="joiasModal">
+        <div class="modal-content modal-joias">
+            <div class="modal-header">
+                <h2 data-i18n-key="jewel_modal_title">💎 Cálculo de Joias Necessárias</h2>
+                <button class="modal-close" onclick="closeJoiasModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="joias-info-group">
+                    <label data-i18n-key="jewel_modal_current_time">🕐 Horário atual:</label>
+                    <div class="joias-value" id="horarioAtual">--/-- --:--:--</div>
+                </div>
+
+                <div class="joias-input-group">
+                    <label for="horasAdicionais" data-i18n-key="jewel_modal_additional_hours">⏱️ Horas Adicionais:</label>
+                    <div class="slider-container">
+                        <input type="range" id="horasAdicionais" min="0" max="54" value="0" class="slider">
+                        <span class="slider-value" id="horasAdicionaisValue">Total: 2h (Grátis)</span>
+                    </div>
+                </div>
+
+                <div class="joias-info-group">
+                    <label data-i18n-key="jewel_modal_release_time">🔓 Hora de Liberação:</label>
+                    <div class="joias-value highlight" id="horaLiberacao">--/-- --:--:--</div>
+                </div>
+
+                <div class="joias-result">
+                    <label data-i18n-key="jewel_modal_jewels_needed">💎 Joias Necessárias:</label>
+                    <div class="joias-number" id="joiasNecessarias">0</div>
+                    <p class="joias-estimate" id="joiasEstimativa" hidden></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="missingModal">
+        <div class="modal-content modal-missing">
+            <div class="modal-header">
+                <h2 data-i18n-key="missing_modal_title">🚫 Torres sem cadastro</h2>
+                <button class="modal-close" onclick="closeMissingModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <p class="modal-subtitle" data-i18n-key="missing_modal_subtitle">
+                    Exibindo todas as combinações de Mapa/Servidor que não possuem um cadastro ATIVO no momento.
+                </p>
+                <p class="modal-subtitle" data-i18n-key="missing_register_hint">Clique em um servidor para cadastrar essa torre.</p>
+                
+                <div class="expired-filters">
+                    <div class="filter-group">
+                        <label for="filterMissingMapa" data-i18n-key="form_map">🗺️ Mapa:</label>
+                        <select id="filterMissingMapa" onchange="renderMissingList()">
+                            <option value="" data-i18n-key="filter_all">Todos</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="filterMissingServidor" data-i18n-key="form_server">🖥️ Servidor:</label>
+                        <select id="filterMissingServidor" onchange="renderMissingList()">
+                            <option value="" data-i18n-key="filter_all">Todos</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="expired-list-container" id="missingListContainer">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="ruudModal">
+        <div class="modal-content modal-ruud">
+            <div class="modal-header">
+                <h2 data-i18n-key="ruud_modal_title">Análise Custo-Benefício: Farm de Ruud</h2>
+                <button class="modal-close" onclick="closeRuudModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                
+                <div class="ruud-settings">
+                    <h3 data-i18n-key="ruud_settings_title">Cenário de Mercado</h3>
+
+                    <div class="ruud-input-group">
+                        <label for="ruud_conversion_rate" data-i18n-key="ruud_conversion">Conversão (1 MC = ? Ruud)</label>
+                        <input type="number" id="ruud_conversion_rate" value="5">
+                    </div>
+
+                    <div class="ruud-input-group">
+                        <label>
+                            <span data-i18n-key="ruud_farm_rate">Sua Taxa de Farm (Ruud / hora)</span>
+                            <span class="tooltip-container">
+                                ⓘ
+                                <span class="tooltip-text" data-i18n-key="ruud_farm_tooltip">
+                                    Estimativas Padrão:
+                                    - Torre Ruim: 1000 Ruud/h
+                                    - Torre Média: 1400 Ruud/h
+                                    - Torre Boa: 1800 Ruud/h
+                                </span>
+                            </span>
+                        </label>
+                        <input type="number" id="ruud_farm_rate" value="1400">
+                    </div>
+
+                    <div class="ruud-input-group">
+                        <label data-i18n-key="ruud_jewel_prices">Preço das Joias (MC p/ 100) - Clique para selecionar</label>
+                        
+                        <div class="jewel-selection-grid">
+                            
+                            <div class="jewel-input-container">
+                                <label for="price_bless">Bless:</label>
+                                <input type="number" id="price_bless">
+                                <button class="btn-jewel-select active" data-jewel="bless" data-i18n-key="ruud_btn_select_jewel">Selecionar</button>
+                            </div>
+                            
+                            <div class="jewel-input-container">
+                                <label for="price_soul">Soul:</label>
+                                <input type="number" id="price_soul">
+                                <button class="btn-jewel-select" data-jewel="soul" data-i18n-key="ruud_btn_select_jewel">Selecionar</button>
+                            </div>
+                            
+                            <div class="jewel-input-container">
+                                <label for="price_chaos">Chaos:</label>
+                                <input type="number" id="price_chaos">
+                                <button class="btn-jewel-select" data-jewel="chaos" data-i18n-key="ruud_btn_select_jewel">Selecionar</button>
+                            </div>
+                            
+                            <div class="jewel-input-container">
+                                <label for="price_life">Life:</label>
+                                <input type="number" id="price_life">
+                                <button class="btn-jewel-select" data-jewel="life" data-i18n-key="ruud_btn_select_jewel">Selecionar</button>
+                            </div>
+
+                            <div class="jewel-input-container">
+                                <label for="price_harmony">Harmony:</label>
+                                <input type="number" id="price_harmony">
+                                <button class="btn-jewel-select" data-jewel="harmony" data-i18n-key="ruud_btn_select_jewel">Selecionar</button>
+                            </div>
+
+                            <div class="jewel-input-container">
+                                <label for="price_creation">Creation:</label>
+                                <input type="number" id="price_creation">
+                                <button class="btn-jewel-select" data-jewel="creation" data-i18n-key="ruud_btn_select_jewel">Selecionar</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    </div>
+
+                <div class="ruud-results">
+                    <h3 data-i18n-key="ruud_results_title">Resultados Hora a Hora</h3>
+                    <div class="ruud-results-table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th data-i18n-key="ruud_col_hour">Hora Add.</th>
+                                    <th data-i18n-key="ruud_col_ruud_accum">RUUD Acumulado</th>
+                                    <th data-i18n-key="ruud_col_cost_jewels">Custo (Joias) da Hora</th>
+                                    <th data-i18n-key="ruud_col_cost_mc">Custo (MC) da Hora</th>
+                                    <th data-i18n-key="ruud_col_profit_mc">Lucro (MC) da Hora</th>
+                                    <th data-i18n-key="ruud_col_profit_accum">Lucro Acum. (MC)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="ruudResultsTableBody">
+                                </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+   <div id="loginScreen" class="login-screen">
+        <div class="login-container">
+            <div class="login-header">
+                <h1>🏰 ANBU FARM TOWER</h1>
+                <h2>MEGAMU - Área Restrita</h2>
+                <div class="header-buttons">
+                    <div class="language-switcher">
+                        <button type="button" data-lang="pt" onclick="setLanguage('pt')" title="Português">🇧🇷</button>
+                        <button type="button" data-lang="en" onclick="setLanguage('en')" title="English">🇺🇸</button>
+                        <button type="button" data-lang="es" onclick="setLanguage('es')" title="Español">🇪🇸</button>
+                        <button type="button" data-lang="vi" onclick="setLanguage('vi')" title="Tiếng Việt">🇻🇳</button>
+                    </div>
+                    <div class="local-clock-wrap">
+                        <time class="local-clock">--:--:--</time>
+                        <span class="local-clock-note" data-i18n-key="table_local_clock">Horários no relógio do Windows.</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="login-card">
+                <div class="lock-icon">🔒</div>
+                <div id="loginPanel">
+                    <h3 data-i18n-key="login_title">Acesso Protegido</h3>
+                    <p data-i18n-key="login_subtitle">Entre com seu usuário e senha</p>
+
+                    <div class="login-form">
+                        <input
+                            type="text"
+                            id="usernameInput"
+                            placeholder="Usuário ou e-mail"
+                            data-i18n-key="login_placeholder_username"
+                            autocomplete="username"
+                        >
+                        <div class="password-field">
+                            <input
+                                type="password"
+                                id="passwordInput"
+                                placeholder="Digite a senha"
+                                data-i18n-key="login_placeholder_password"
+                                autocomplete="current-password"
+                            >
+                            <button type="button" id="togglePasswordBtn" class="btn-toggle-password" onclick="togglePasswordVisibility()" data-i18n-key="login_show_password">Mostrar senha</button>
+                        </div>
+                        <button type="button" id="loginSubmitBtn" onclick="handleLogin()" class="btn-login">
+                            <span>🔓</span> <span data-i18n-key="login_button">Entrar</span>
+                        </button>
+                        <button type="button" class="btn-register" onclick="showRegisterForm()" data-i18n-key="btn_register">Criar conta</button>
+                    </div>
+                </div>
+
+                <div id="registerPanel" style="display: none;">
+                    <h3 data-i18n-key="register_title">Criar conta</h3>
+                    <p data-i18n-key="register_subtitle">A conta só entra depois que o administrador aprovar</p>
+                    <div class="login-form">
+                        <input
+                            type="text"
+                            id="registerUsername"
+                            placeholder="Usuário"
+                            data-i18n-key="account_username"
+                            maxlength="24"
+                            autocomplete="username"
+                        >
+                        <input
+                            type="text"
+                            id="registerNome"
+                            placeholder="Nome que aparece na planilha"
+                            data-i18n-key="account_name"
+                            maxlength="40"
+                            autocomplete="name"
+                        >
+                        <input
+                            type="password"
+                            id="registerPassword"
+                            placeholder="Digite a senha"
+                            data-i18n-key="login_placeholder_password"
+                            maxlength="64"
+                            autocomplete="new-password"
+                        >
+                        <input
+                            type="password"
+                            id="registerPasswordConfirm"
+                            placeholder="Repetir a senha"
+                            data-i18n-key="register_password_confirm"
+                            maxlength="64"
+                            autocomplete="new-password"
+                        >
+                        <button type="button" id="registerSubmitBtn" class="btn-login" onclick="handleRegister()">
+                            <span data-i18n-key="btn_register">Criar conta</span>
+                        </button>
+                        <button type="button" class="btn-register-back" onclick="showLoginForm()" data-i18n-key="register_back">Voltar ao login</button>
+                    </div>
+                </div>
+
+                <div id="loginErrorMessage" class="error-message-login"></div>
+            </div>
+            
+            <div class="login-footer">
+                <p data-i18n-key="footer_credit">Criado por <strong>fujikoftw</strong> - O MELHOR DL DO MEGAMU</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="container" style="display: none;">
+        <header class="header">
+            <h1>🏰 ANBU FARM TOWER</h1>
+            <h2 data-i18n-key="form_title">MEGAMU - Cadastro de Torres</h2>
+            <div class="header-buttons">
+                <div class="language-switcher">
+                    <button type="button" data-lang="pt" onclick="setLanguage('pt')" title="Português">🇧🇷</button>
+                    <button type="button" data-lang="en" onclick="setLanguage('en')" title="English">🇺🇸</button>
+                    <button type="button" data-lang="es" onclick="setLanguage('es')" title="Español">🇪🇸</button>
+                    <button type="button" data-lang="vi" onclick="setLanguage('vi')" title="Tiếng Việt">🇻🇳</button>
+                </div>
+                <div class="local-clock-wrap">
+                    <time class="local-clock">--:--:--</time>
+                    <span class="local-clock-note" data-i18n-key="table_local_clock">Horários no relógio do Windows.</span>
+                </div>
+                
+                <div id="accountTools" class="account-tools"></div>
+                <button class="btn-logout" onclick="logout()" data-i18n-key="btn_logout">
+                    🚪 Sair
+                </button>
+                <div class="connection-status" id="connectionStatus">
+                    <span class="status-dot"></span>
+                    <span class="status-text" data-i18n-key="connection_status">Conectando...</span>
+                </div>
+                
+            </div>
+            
+        </header>
+
+        <div class="success-message" id="successMessage"></div>
+        <div class="error-message" id="errorMessage"></div>
+
+        <div class="form-card">
+            <h3 data-i18n-key="form_title">📝 Cadastro de Torre</h3>
+            
+            <form id="towerForm">
+                <div class="form-group">
+                    <label for="mapa" data-i18n-key="form_map">Mapa *</label>
+                    <select id="mapa" required>
+                        <option value="" data-i18n-key="form_map_placeholder">Selecione um mapa</option>
+                        </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="servidor" data-i18n-key="form_server">Servidor *</label>
+                    <select id="servidor" required>
+                        <option value="" data-i18n-key="form_server_placeholder">Selecione um servidor</option>
+                        </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="dono" data-i18n-key="form_owner">Dono *</label>
+                    <div class="owner-alliance-group">
+                        <input type="text" id="dono" class="owner-input" placeholder="Digite o nome do dono" data-i18n-key="form_owner_placeholder" maxlength="40" required>
+                        
+                        <div class="alliance-toggle">
+                            <input type="radio" id="alliance_ally" name="alliance" value="Aliado" checked>
+                            <label for="alliance_ally" class="toggle-label ally" data-i18n-key="form_alliance_ally">Aliado</label>
+                            
+                            <input type="radio" id="alliance_enemy" name="alliance" value="Inimigo">
+                            <label for="alliance_enemy" class="toggle-label enemy" data-i18n-key="form_alliance_enemy">Inimigo</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="localizacao" data-i18n-key="form_location">Localização Específica *</label>
+                    <input type="text" id="localizacao" placeholder="Ex: X:123 Y:456 ou Hotspot Central" data-i18n-key="form_location_placeholder" maxlength="80" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="duracao" data-i18n-key="form_duration">Duração da Torre *</label> 
+                    <span class="duration-hint" data-i18n-key="form_duration_hint">(Máximo: 54 horas)</span>
+                    
+                    <div class="duration-inputs">
+                        <div class="duration-field">
+                            <input type="number" id="horas" min="0" max="54" value="0" required>
+                            <span>h</span>
+                        </div>
+                        <div class="duration-field">
+                            <input type="number" id="minutos" min="0" max="59" value="0" required>
+                            <span>m</span>
+                        </div>
+                        <div class="duration-field">
+                            <input type="number" id="segundos" min="0" max="59" value="0" required>
+                            <span>s</span>
+                        </div>
+                    </div>
+                    <p class="schedule-preview" id="schedulePreview"></p>
+                </div>
+
+                <div class="button-group">
+                    <button type="submit" class="btn btn-submit" id="submitBtn">
+                        <span>📝</span> <span data-i18n-key="form_button_register">Cadastrar Torre</span>
+                    </button>
+                    <button type="button" class="btn btn-view" onclick="window.location.href='tabela.html'">
+                        <span>📊</span> <span data-i18n-key="form_button_view_table">Ver Tabela</span>
+                    </button>
+                </div>
+                <div class="button-group" style="margin-top: 15px;">
+                     <button type="button" class="btn btn-missing" onclick="openMissingModal()">
+                        <span>🚫</span> <span data-i18n-key="form_button_missing">Torres s/ Cadastro</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <footer class="footer">
+            <p data-i18n-key="footer_credit">Criado por <strong>fujikoftw</strong> - O MELHOR DL DO MEGAMU</p>
+        </footer>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js" integrity="sha384-ViccRjS0k/lvYsrtaKXk+ES61/4PAZlFI/mPHmLC1YWzK0AIbXbI5ZXDzcm3F8gH" crossorigin="anonymous"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js" integrity="sha384-f6/UpzjTjIXASlp20cArQsaRh1EvHVJd5kegy/gYR9W2D0a32TnEqUEiW4Zm/5O0" crossorigin="anonymous"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js" integrity="sha384-+/4lqMnmLqwbdHXshvGDmBTeWlNoPRdjXi4ZsiBj10EhQXaTBe3RF5JZktdSjug6" crossorigin="anonymous"></script>
+    
+    <script src="js/time.js"></script>
+    <script src="js/firebase-config.js"></script>
+    <script src="js/game-data.js?v=20261102-54h"></script>
+
+    <script src="js/i18n.js?v=20261106-usuarios"></script>
+    <script src="js/accounts.js?v=20261106-usuarios"></script>
+
+    <script src="js/auth.js?v=20261106-usuarios"></script>
+    <script src="js/joias-calculator.js?v=20261102-54h"></script>
+    <script src="js/cadastro.js?v=20261103-horarios"></script> 
+    <script src="js/tabela.js?v=20261102-ranking"></script> 
+    <script src="js/missing-towers.js"></script>
+</body>
+</html>
